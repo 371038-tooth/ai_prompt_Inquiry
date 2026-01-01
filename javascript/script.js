@@ -54,6 +54,72 @@ function highlightMapping(word) {
 onUiLoaded(() => {
     geminiHighlightWord();
 
+    // ADetailer-style: Move checkbox into accordion header
+    const setupAccordionCheckbox = () => {
+        const checkbox = gradioApp().querySelector('#aipi_prompt_settings_checkbox');
+        const accordion = gradioApp().querySelector('#aipi_prompt_settings_accordion');
+
+        if (checkbox && accordion) {
+            const labelWrap = accordion.querySelector('.label-wrap');
+            if (labelWrap) {
+                // Get just the checkbox input and its label container
+                const checkboxContainer = checkbox.querySelector('label');
+                if (checkboxContainer) {
+                    // Create a wrapper to hold the checkbox
+                    const wrapper = document.createElement('span');
+                    wrapper.id = 'aipi_accordion_checkbox_wrapper';
+                    wrapper.style.cssText = 'display: inline-flex; align-items: center; margin-right: 8px;';
+
+                    // Clone the checkbox input
+                    const input = checkboxContainer.querySelector('input');
+                    if (input) {
+                        const newInput = input.cloneNode(true);
+                        wrapper.appendChild(newInput);
+
+                        // Prevent clicking the checkbox from toggling the accordion
+                        newInput.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                        });
+
+                        // Sync checkbox state
+                        newInput.addEventListener('change', () => {
+                            input.checked = newInput.checked;
+                            input.dispatchEvent(new Event('change', { bubbles: true }));
+                        });
+
+                        // Sync from original to cloned
+                        input.addEventListener('change', () => {
+                            newInput.checked = input.checked;
+                        });
+
+                        // Insert at the beginning of labelWrap
+                        labelWrap.insertBefore(wrapper, labelWrap.firstChild);
+
+                        // Alignment is now handled via style.css
+                        const titleSpan = Array.from(labelWrap.childNodes).find(node => node.nodeType === 3 || node.tagName === 'SPAN' && node.id !== 'aipi_accordion_checkbox_wrapper');
+                        if (titleSpan && titleSpan.style) {
+                            titleSpan.style.flex = '1';
+                        }
+
+                        // Hide the original checkbox row
+                        checkbox.closest('.aipi_accordion_header > div:first-child, [class*="form"]')?.style?.setProperty('display', 'none', 'important');
+                        // Try to hide parent container of original checkbox
+                        const originalRow = checkbox.closest('.aipi_accordion_header');
+                        if (originalRow) {
+                            // Restructure: move accordion out of the row
+                            const parent = originalRow.parentNode;
+                            parent.insertBefore(accordion, originalRow);
+                            originalRow.style.display = 'none';
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    // Run after a short delay to ensure DOM is ready
+    setTimeout(setupAccordionCheckbox, 500);
+
     document.addEventListener('click', (e) => {
         const target = e.target;
 

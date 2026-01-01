@@ -1,0 +1,18 @@
+/* Edit Button Style */
+#aipi_quality_tags_edit_btn,
+#aipi_bottom_mandatory_edit_btn {
+    font-size: 1.5em !important;
+    padding: 0 !important;
+    margin-top: 10px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    min-width: 40px !important;
+}
+
+#aipi_quality_tags_edit_btn:hover,
+#aipi_bottom_mandatory_edit_btn:hover {
+    filter: brightness(1.5);
+    transform: scale(1.1);
+}
+/* Done */

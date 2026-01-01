@@ -3,7 +3,7 @@ import openai
 import json
 import re
 
-def generate_prompts_gemini(api_key, user_input):
+def generate_prompts_gemini(api_key, user_input, **kwargs):
     if not api_key:
         return None, "Gemini API Key is required."
     
@@ -31,7 +31,7 @@ def generate_prompts_gemini(api_key, user_input):
         try:
             model = genai.GenerativeModel(model_name)
             
-            prompt = create_system_prompt(user_input)
+            prompt = create_system_prompt(user_input, kwargs.get("quality_tags"))
             response = model.generate_content(prompt)
             
             return parse_json_response(response.text, model_name)
@@ -45,14 +45,14 @@ def generate_prompts_gemini(api_key, user_input):
     
     return None, f"All Gemini models ({len(models_to_try)}) failed. Please try ChatGPT instead. Last error: {last_error}"
 
-def generate_prompts_openai(api_key, user_input):
+def generate_prompts_openai(api_key, user_input, **kwargs):
     if not api_key:
         return None, "OpenAI API Key is required."
     
     client = openai.OpenAI(api_key=api_key)
     
     try:
-        prompt = create_system_prompt(user_input)
+        prompt = create_system_prompt(user_input, kwargs.get("quality_tags"))
         response = client.chat.completions.create(
             model="gpt-4o-mini", # Default fast model
             messages=[{"role": "user", "content": prompt}],
@@ -64,8 +64,33 @@ def generate_prompts_openai(api_key, user_input):
     except Exception as e:
         return None, f"OpenAI Error: {str(e)}"
 
-def create_system_prompt(user_input):
-    full_request = f"Stable Diffusion で利用するプロンプトを生成してください。\n要望: {user_input}"
+def generate_prompts_grok(api_key, user_input, **kwargs):
+    if not api_key:
+        return None, "Grok API Key is required."
+    
+    client = openai.OpenAI(
+        api_key=api_key,
+        base_url="https://api.x.ai/v1",
+    )
+    
+    try:
+        prompt = create_system_prompt(user_input, kwargs.get("quality_tags"))
+        response = client.chat.completions.create(
+            model="grok-beta", # Or another appropriate model name
+            messages=[{"role": "user", "content": prompt}],
+        )
+        
+        return parse_json_response(response.choices[0].message.content, "grok-beta")
+        
+    except Exception as e:
+        return None, f"Grok Error: {str(e)}"
+
+def create_system_prompt(user_input, quality_tags=None):
+    quality_constraint = ""
+    if quality_tags:
+        quality_constraint = f"\nCRITICAL: Do not output any quality tags other than the following: {quality_tags}. Strictly follow this."
+
+    full_request = f"Stable Diffusion で利用するプロンプトを生成してください。\n要望: {user_input}{quality_constraint}"
     return f"""
 Convert the following request into Stable Diffusion prompts (Positive and Negative).
 Return the result in JSON format with the following keys:
@@ -90,8 +115,10 @@ def parse_json_response(text, model_name):
     except Exception as e:
         return None, f"JSON parse error from {model_name}: {str(e)}"
 
-def generate_prompts(llm_type, api_key, user_input):
+def generate_prompts(llm_type, api_key, user_input, **kwargs):
     if llm_type == "ChatGPT":
-        return generate_prompts_openai(api_key, user_input)
+        return generate_prompts_openai(api_key, user_input, **kwargs)
+    elif llm_type == "Grok":
+        return generate_prompts_grok(api_key, user_input, **kwargs)
     else:
-        return generate_prompts_gemini(api_key, user_input)
+        return generate_prompts_gemini(api_key, user_input, **kwargs)
