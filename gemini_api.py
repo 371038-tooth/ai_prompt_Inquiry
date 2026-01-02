@@ -10,6 +10,8 @@ def generate_prompts(api_key, user_input):
     
     # Try multiple common model names in case of 404
     models_to_try = [
+        'gemini-3.0-pro',
+        'gemini-3.0-flash',
         'gemini-1.5-flash',
         'gemini-1.5-flash-8b',
         'gemini-1.5-pro',

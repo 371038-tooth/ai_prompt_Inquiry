@@ -3,18 +3,28 @@ import openai
 import json
 import re
 
-def generate_prompts_gemini(api_key, user_input, **kwargs):
+def generate_prompts_gemini(api_key, user_input, model_preference=None, **kwargs):
     if not api_key:
         return None, "Gemini API Key is required."
     
     genai.configure(api_key=api_key)
     
-    # Try preferred names first
-    models_to_try = [
-        'gemini-1.5-flash',
-        'gemini-2.0-flash',
-        'gemini-1.5-pro',
-    ]
+    # Define model lists for different preferences
+    model_lists = {
+        "Gemini 3.0": ['gemini-3.0-pro', 'gemini-3.0-flash'],
+        "Gemini 2.0": ['gemini-2.0-flash', 'gemini-2.0-flash-exp'],
+        "Gemini 1.5": ['gemini-1.5-flash', 'gemini-1.5-pro']
+    }
+    
+    models_to_try = []
+    if model_preference in model_lists:
+        models_to_try.extend(model_lists[model_preference])
+    
+    # Add defaults if not already present
+    default_models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro']
+    for m in default_models:
+        if m not in models_to_try:
+            models_to_try.append(m)
     
     # Also fetch all available models to be super robust
     try:
@@ -94,7 +104,7 @@ def create_system_prompt(user_input, quality_tags=None):
     return f"""
 Convert the following request into Stable Diffusion prompts (Positive and Negative).
 Return the result in JSON format with the following keys:
-- positive: The English positive prompt (comma-separated tags).
+- positive: The English positive prompt (comma-separated tags). IMPORTANT: Place all quality tags (e.g., masterpiece, best quality, ultra high res, etc.) at the very beginning of this list.
 - negative: The English negative prompt (comma-separated tags).
 - pos_mapping: A list of objects with "word" (English tag from positive) and "translation" (Japanese meaning).
 - neg_mapping: A list of objects with "word" (English tag from negative) and "translation" (Japanese meaning).
@@ -120,5 +130,7 @@ def generate_prompts(llm_type, api_key, user_input, **kwargs):
         return generate_prompts_openai(api_key, user_input, **kwargs)
     elif llm_type == "Grok":
         return generate_prompts_grok(api_key, user_input, **kwargs)
+    elif "Gemini" in llm_type:
+        return generate_prompts_gemini(api_key, user_input, model_preference=llm_type, **kwargs)
     else:
         return generate_prompts_gemini(api_key, user_input, **kwargs)

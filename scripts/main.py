@@ -77,8 +77,8 @@ def on_ui_tabs():
             with gr.Group(elem_id="aipi_llm_settings_group"):
                 gr.Markdown("### LLM設定")
                 with gr.Row():
-                    llm_type = gr.Dropdown(choices=["Gemini", "ChatGPT", "Grok"], value=config.get("llm_type", "ChatGPT"), label="LLM選択", scale=1)
-                    gemini_key = gr.Textbox(value=config.get("gemini_key", ""), label="API Key (Gemini)", type="password", visible=(config.get("llm_type") == "Gemini"), scale=2)
+                    llm_type = gr.Dropdown(choices=["Gemini 3.0", "Gemini 2.0", "ChatGPT", "Grok"], value=config.get("llm_type", "Gemini 3.0"), label="LLM選択", scale=1)
+                    gemini_key = gr.Textbox(value=config.get("gemini_key", ""), label="API Key (Gemini)", type="password", visible=("Gemini" in config.get("llm_type", "Gemini 3.0")), scale=2)
                     openai_key = gr.Textbox(value=config.get("openai_key", ""), label="API Key (ChatGPT)", type="password", visible=(config.get("llm_type") == "ChatGPT"), scale=2)
                     grok_key = gr.Textbox(value=config.get("grok_key", ""), label="API Key (Grok)", type="password", visible=(config.get("llm_type") == "Grok"), scale=2)
 
@@ -139,7 +139,7 @@ def on_ui_tabs():
             # Save settings (saving presets names)
             save_config(llm, g_key, o_key, gr_key, prompt_settings_enabled, quality_tags_enabled, quality_tags_preset, bottom_mandatory_enabled, bottom_mandatory_preset, text)
 
-            api_key = g_key if llm == "Gemini" else (o_key if llm == "ChatGPT" else gr_key)
+            api_key = g_key if "Gemini" in llm else (o_key if llm == "ChatGPT" else gr_key)
             
             # Pass quality tags constraint to LLM if enabled (using the actual textbox content)
             data, error = generate_prompts(llm, api_key, text, quality_tags=(qt_prompt if (prompt_settings_enabled and quality_tags_enabled) else None))
@@ -161,7 +161,10 @@ def on_ui_tabs():
                     filtered_tags = []
                     quality_tags_to_prepend = []
 
-                    # First, identify already present quality tags or ones we want to keep
+                    filtered_tags = []
+                    quality_tags_to_prepend = []
+
+                    # Identify quality tags to keep
                     for t in pos_tags:
                         t_lower = t.lower()
                         is_quality = any(q in t_lower for q in common_quality_tags)
@@ -179,6 +182,19 @@ def on_ui_tabs():
                     
                     # Prepend all quality tags
                     pos = ", ".join(quality_tags_to_prepend + filtered_tags)
+                
+                else:
+                    # Even if quality_tags_enabled is False, move common quality tags to the beginning
+                    common_quality_tags = ["masterpiece", "best quality", "ultra high res", "highres", "extremely detailed", "8k", "4k"]
+                    pos_tags = [t.strip() for t in pos.split(",") if t.strip()]
+                    quality_part = []
+                    content_part = []
+                    for t in pos_tags:
+                        if any(q in t.lower() for q in common_quality_tags):
+                            quality_part.append(t)
+                        else:
+                            content_part.append(t)
+                    pos = ", ".join(quality_part + content_part)
 
                 # 2. Bottom Mandatory
                 if bottom_mandatory_enabled and bm_prompt:
@@ -290,7 +306,7 @@ def on_ui_tabs():
         aipi_interface.load(fn=on_load, outputs=[quality_tags_preset, bottom_mandatory_preset, quality_tags_prompt, bottom_mandatory_prompt])
 
         def update_llm_visibility(llm):
-            return gr.update(visible=(llm == "Gemini")), gr.update(visible=(llm == "ChatGPT")), gr.update(visible=(llm == "Grok"))
+            return gr.update(visible=("Gemini" in llm)), gr.update(visible=(llm == "ChatGPT")), gr.update(visible=(llm == "Grok"))
         
         llm_type.change(fn=update_llm_visibility, inputs=[llm_type], outputs=[gemini_key, openai_key, grok_key])
 
